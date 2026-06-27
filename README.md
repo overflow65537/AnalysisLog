@@ -1,6 +1,6 @@
 # astrbot_plugin_analysislog
 
-> 自动分析 **MAA_Punish（法奥斯之矛）** 用户在 QQ 群上传的日志，并直接给出"问题原因 + 解决方案"。
+> 自动分析 maafw 用户在 QQ 群上传的日志，并直接给出"问题原因 + 解决方案"。
 
 ![status](https://img.shields.io/badge/platform-OneBot%20(aiocqhttp)-blue)
 ![scope](https://img.shields.io/badge/scope-Group%20Only-orange)
@@ -73,7 +73,7 @@
 **日志缓存**：`<AstrBot data 目录>/analysislog_cache/<group_id>/<user_id>/<ts>_<name>`
 - 内存记录与磁盘文件均会自动过期清理（窗口外 + 1 天）
 
-**MAA_Punish 源码**：插件**不会**自己拉取或维护源码，请自行 `git clone https://github.com/overflow65537/MAA_Punish.git` 到任意位置，并把绝对路径填入配置项 `source_repo_path`。
+**maafw 项目源码**：插件**不会**自己拉取或维护源码，请自行 `git clone 项目地址.git` 到任意位置，并把绝对路径填入配置项 `source_repo_path`。
 - 留空则跳过源码对照，LLM 仅基于日志作答
 - 想换分支/想看本地修改版？直接 `git checkout` 或编辑文件即可，插件读最新文件
 - 插件**只读**该目录，不会做任何写入操作

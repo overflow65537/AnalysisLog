@@ -1,7 +1,7 @@
-name: astrbot_plugin_analysislog
-display_name: 法奥斯之矛日志助手
+name: astrbot_plugin_log_analysis
+display_name: 日志分析
 desc: 监听 QQ 群中用户求助关键词，自动定位最近上传的日志文件，调用 LLM 给出 MAA_Punish 故障原因与解决方案。
-short_desc: 自动分析 MAA_Punish (法奥斯之矛) 日志并回复用户解决方案
+short_desc: 自动分析 maafw 日志并回复用户解决方案
 version: v0.1.0
 author: overflow65537
 repo: https://github.com/overflow65537/AnalysisLog

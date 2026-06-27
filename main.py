@@ -53,9 +53,9 @@ class UserCache:
 
 
 @register(
-    "astrbot_plugin_analysislog",
+    "astrbot_plugin_log_analysis",
     "overflow65537",
-    "自动分析 MAA_Punish (法奥斯之矛) 日志并回复用户解决方案",
+    "自动分析 maafw 日志并回复用户解决方案",
     "v0.1.0",
     "https://github.com/overflow65537/AnalysisLog",
 )

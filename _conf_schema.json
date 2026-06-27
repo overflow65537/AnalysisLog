@@ -1,0 +1,79 @@
+{
+    "enabled": {
+        "type": "bool",
+        "description": "插件总开关",
+        "default": true
+    },
+    "keywords": {
+        "type": "list",
+        "description": "求助关键词列表（命中后触发分析流程）",
+        "default": ["报错", "卡住", "不动了", "识别不到", "救命", "help", "bug", "崩溃", "异常"],
+        "hint": "在群消息纯文本中匹配这些关键词；任一命中即触发"
+    },
+    "keyword_mode": {
+        "type": "string",
+        "description": "关键词匹配模式",
+        "options": ["substring", "regex"],
+        "default": "substring",
+        "hint": "substring=子串包含；regex=按正则匹配"
+    },
+    "file_name_patterns": {
+        "type": "list",
+        "description": "日志文件名正则列表（任一命中即视为日志）",
+        "default": ["(?i)^gui\\.log$", "(?i)^custom.*\\.log$", "(?i)^maa\\.log$", "(?i)^debug.*\\.log$", "(?i).*\\.zip$"],
+        "hint": "Python re 正则，对 File.name 做 search 匹配"
+    },
+    "lookback_minutes": {
+        "type": "int",
+        "description": "回看窗口（分钟）",
+        "default": 10,
+        "hint": "在此窗口内查找该用户上传过的日志"
+    },
+    "cooldown_seconds": {
+        "type": "int",
+        "description": "同一用户触发冷却（秒）",
+        "default": 60,
+        "hint": "避免连续刷屏；管理员手动触发不受限"
+    },
+    "nudge_replies": {
+        "type": "list",
+        "description": "未找到日志时的随机催促回复列表",
+        "default": [
+            "请先把日志文件发到群里喵~",
+            "看不到日志我可帮不了你 (´･ω･`)",
+            "先丢一份 gui.log 或日志压缩包上来吧",
+            "没有日志的求助等于让我猜谜，先发文件",
+            "把 debug 目录打包成 zip 丢上来，我才能分析"
+        ]
+    },
+    "analyzing_reply": {
+        "type": "string",
+        "description": "找到日志后、分析前的提示语",
+        "default": "已找到你的日志，正在分析中，请稍候..."
+    },
+    "max_log_chars": {
+        "type": "int",
+        "description": "单个日志文件送入 LLM 的最大字符数（超出会截断尾部）",
+        "default": 30000
+    },
+    "max_total_chars": {
+        "type": "int",
+        "description": "整个日志包送入 LLM 的总字符上限",
+        "default": 80000
+    },
+    "skill_relative_path": {
+        "type": "string",
+        "description": "插件内技能 SKILL.md 的相对路径",
+        "default": "skills/maa-punish-log-analysis/SKILL.md"
+    },
+    "system_prompt_suffix": {
+        "type": "text",
+        "description": "附加到技能 prompt 后面的额外要求",
+        "default": "请基于以上技能与提供的日志内容输出最终结论。回复格式严格为：\n【问题原因】<一句话>\n【解决方案】<分步骤、可执行>\n不要展示分析过程，不要复述日志，不要给出免责声明。"
+    },
+    "admin_only_command": {
+        "type": "bool",
+        "description": "/analysis 指令是否仅限群管理员/群主使用",
+        "default": true
+    }
+}

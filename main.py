@@ -287,7 +287,6 @@ class AnalysisLogPlugin(Star):
             local_path = await self._download(record)
             record.local_path = local_path
 
-        max_total = int(self.config.get("max_total_chars", 80000))
         max_single = int(self.config.get("max_log_chars", 30000))
 
         if local_path.lower().endswith(".zip"):
@@ -299,15 +298,15 @@ class AnalysisLogPlugin(Star):
             except zipfile.BadZipFile:
                 return ""
 
-            payload = self._collect_logs_from_dir(extract_dir, max_single, max_total)
+            payload = self._collect_logs_from_dir(extract_dir, max_single)
             return payload
         else:
             text = self._read_text_tail(local_path, max_single)
             header = f"===== FILE: {os.path.basename(local_path)} =====\n"
             return header + text
 
-    def _collect_logs_from_dir(self, root: str, per_file_cap: int, total_cap: int) -> str:
-        """递归收集 .log 文本，优先级 gui > custom > maa > 其它。"""
+    def _collect_logs_from_dir(self, root: str, per_file_cap: int) -> str:
+        """递归收集 .log 文本，优先级 gui > custom > maa > 其它。不再设总上限，每文件受 per_file_cap 限制。"""
         priority = {"gui.log": 0, "custom.log": 1, "maa.log": 2}
         candidates: List[Tuple[int, str]] = []  # (prio, fullpath)
         for dirpath, _, filenames in os.walk(root):
@@ -319,17 +318,11 @@ class AnalysisLogPlugin(Star):
         candidates.sort(key=lambda x: x[0])
 
         out_parts: List[str] = []
-        used = 0
         for _, fp in candidates:
-            if used >= total_cap:
-                break
-            remain = total_cap - used
-            cap = min(per_file_cap, remain)
             rel = os.path.relpath(fp, root)
-            txt = self._read_text_tail(fp, cap)
+            txt = self._read_text_tail(fp, per_file_cap)
             block = f"===== FILE: {rel} =====\n{txt}\n"
             out_parts.append(block)
-            used += len(block)
         return "".join(out_parts)
 
     def _read_text_tail(self, path: str, cap: int) -> str:
@@ -440,7 +433,7 @@ class AnalysisLogPlugin(Star):
 
         system_prompt = self._build_system_prompt()
         user_prompt = (
-            "以下是用户上传的 MAA_Punish 日志内容（可能被截断到末尾若干字符）：\n\n"
+            "以下是用户上传的日志文件完整内容：\n\n"
             f"{log_payload}\n\n"
             "请严格按要求输出最终结论。"
         )
@@ -480,9 +473,27 @@ class AnalysisLogPlugin(Star):
                 "MAA_Punish 源码位置：（未提供，跳过源码对照，仅依据日志作答）\n"
             )
 
+        # 可选：继承主人格风格
+        persona_block = ""
+        if self.config.get("use_persona_prompt", False):
+            try:
+                pm = self.context.persona_manager
+                persona = (
+                    pm.selected_default_persona_v3
+                    or pm.get_persona_v3_by_id(pm.default_persona)
+                )
+                if persona and persona.get("prompt"):
+                    persona_block = (
+                        "\n\n## 默认人格指令（用于匹配主人格回复风格）\n"
+                        f"{persona['prompt']}\n"
+                    )
+                    logger.info("[AnalysisLog] 已注入主人格提示词")
+            except Exception as e:
+                logger.warning(f"[AnalysisLog] 获取主人格失败：{e}")
+
         return (
             "你是 MAA_Punish（法奥斯之矛）日志分析助手。请严格遵循以下技能约束。\n\n"
-            f"{skill_text}{repo_block}\n\n{suffix}"
+            f"{skill_text}{repo_block}{persona_block}\n\n{suffix}"
         )
 
     # ------------------------------------------------------------------ #

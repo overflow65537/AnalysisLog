@@ -56,11 +56,6 @@
         "description": "单个日志文件送入 LLM 的最大字符数（超出会截断尾部）",
         "default": 30000
     },
-    "max_total_chars": {
-        "type": "int",
-        "description": "整个日志包送入 LLM 的总字符上限",
-        "default": 80000
-    },
     "skill_relative_path": {
         "type": "string",
         "description": "插件内技能 SKILL.md 的相对路径",
@@ -75,6 +70,11 @@
         "type": "bool",
         "description": "/analysis 指令是否仅限群管理员/群主使用",
         "default": true
+    },
+    "use_persona_prompt": {
+        "type": "bool",
+        "description": "启用后，分析时采用 AstrBot 当前默认人格的提示词，让回复风格匹配主人格",
+        "default": false
     },
     "source_repo_path": {
         "type": "string",

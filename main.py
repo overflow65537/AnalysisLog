@@ -43,6 +43,7 @@ class LogRecord:
     file_url: str
     timestamp: float
     local_path: Optional[str] = None  # 下载后本地路径
+    analyzed: bool = False  # 是否已被分析过，避免对同一份日志重复分析
 
 
 @dataclass
@@ -135,15 +136,16 @@ class AnalysisLogPlugin(Star):
         if not self._match_keyword(message_str):
             return
 
-        # 冷却
+        # 冷却（加锁，避免同一用户多事件并发竞态导致重复触发）
         key = (group_id, user_id)
-        now = time.time()
-        last = self._last_trigger.get(key, 0.0)
         cooldown = int(self.config.get("cooldown_seconds", 60))
-        if now - last < cooldown:
-            logger.debug(f"[AnalysisLog] 冷却中，跳过：{key}")
-            return
-        self._last_trigger[key] = now
+        async with self._lock:
+            now = time.time()
+            last = self._last_trigger.get(key, 0.0)
+            if now - last < cooldown:
+                logger.debug(f"[AnalysisLog] 冷却中，跳过：{key}")
+                return
+            self._last_trigger[key] = now
 
         async for r in self._handle_analysis(event, target_user_id=user_id):
             yield r
@@ -190,7 +192,9 @@ class AnalysisLogPlugin(Star):
         manual: bool = False,
     ):
         group_id = event.get_group_id() or ""
-        record = self._find_latest_record(group_id, target_user_id)
+        record = self._find_latest_record(
+            group_id, target_user_id, include_analyzed=manual
+        )
 
         if record is None:
             # 未找到日志 → 随机催促
@@ -241,6 +245,9 @@ class AnalysisLogPlugin(Star):
             )
             return
 
+        # 标记该日志已分析，避免后续关键词再次重复分析同一份
+        record.analyzed = True
+
         yield event.chain_result(
             self._mention(target_user_id) + [Plain("\n" + conclusion.strip())]
         )
@@ -269,13 +276,17 @@ class AnalysisLogPlugin(Star):
             cache.records.append(rec)
         logger.info(f"[AnalysisLog] 记录群文件：g={group_id} u={user_id} name={rec.file_name}")
 
-    def _find_latest_record(self, group_id: str, user_id: str) -> Optional[LogRecord]:
+    def _find_latest_record(
+        self, group_id: str, user_id: str, include_analyzed: bool = False
+    ) -> Optional[LogRecord]:
         cache = self._caches.get((group_id, user_id))
         if not cache or not cache.records:
             return None
         lookback = int(self.config.get("lookback_minutes", 10)) * 60
         now = time.time()
         valid = [r for r in cache.records if now - r.timestamp <= lookback]
+        if not include_analyzed:
+            valid = [r for r in valid if not r.analyzed]
         if not valid:
             return None
         return valid[-1]  # 最新一份

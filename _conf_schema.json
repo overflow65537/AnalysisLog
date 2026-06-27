@@ -75,5 +75,32 @@
         "type": "bool",
         "description": "/analysis 指令是否仅限群管理员/群主使用",
         "default": true
+    },
+    "source_repo_url": {
+        "type": "string",
+        "description": "MAA_Punish 源码仓库 git 地址（用于自动克隆）",
+        "default": "https://github.com/overflow65537/MAA_Punish.git"
+    },
+    "source_repo_branch": {
+        "type": "string",
+        "description": "源码仓库分支（留空使用默认分支）",
+        "default": ""
+    },
+    "source_repo_path": {
+        "type": "string",
+        "description": "MAA_Punish 源码本地路径（留空则使用 data 目录下的默认位置）",
+        "default": "",
+        "hint": "如已自行克隆，填本地绝对路径，可避免插件再次拉取"
+    },
+    "source_auto_clone": {
+        "type": "bool",
+        "description": "启动时若源码不存在则自动 git clone",
+        "default": true
+    },
+    "source_auto_pull": {
+        "type": "bool",
+        "description": "启动时若源码已存在则尝试 git pull 更新",
+        "default": false,
+        "hint": "网络抖动时可能拖慢启动，按需开启"
     }
 }

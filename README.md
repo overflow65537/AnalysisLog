@@ -42,6 +42,11 @@
 | `max_log_chars` | 单文件送入 LLM 的字符上限 | `30000` |
 | `max_total_chars` | 总字符上限 | `80000` |
 | `admin_only_command` | `/analysis` 仅限群管理员/群主 | `true` |
+| `source_repo_url` | MAA_Punish 源码 git 地址 | `https://github.com/overflow65537/MAA_Punish.git` |
+| `source_repo_branch` | 源码分支（留空=默认） | `""` |
+| `source_repo_path` | 已有本地路径（留空=使用 data 默认位置） | `""` |
+| `source_auto_clone` | 启动时若不存在则自动 git clone | `true` |
+| `source_auto_pull` | 启动时若已存在则尝试 git pull | `false` |
 
 ---
 
@@ -67,10 +72,16 @@
 
 ---
 
-## 📦 缓存
+## 📦 缓存与源码
 
-- 文件落盘到：`<AstrBot data 目录>/analysislog_cache/<group_id>/<user_id>/<ts>_<name>`
+**日志缓存**：`<AstrBot data 目录>/analysislog_cache/<group_id>/<user_id>/<ts>_<name>`
 - 内存记录与磁盘文件均会自动过期清理（窗口外 + 1 天）
+
+**MAA_Punish 源码**：`<AstrBot data 目录>/analysislog_repo/MAA_Punish/`
+- 启动时插件会自动 `git clone --depth 1`（受 `source_auto_clone` 控制）
+- 如服务器已自行克隆，可在 `source_repo_path` 填本地绝对路径以复用
+- LLM system prompt 会注入该路径，供模型在需要时检索 `assets/`、`agent/`、`pipeline/`、`interface.json` 等作为对照证据
+- 系统需安装 `git` 命令行
 
 ---
 

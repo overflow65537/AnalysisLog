@@ -78,6 +78,11 @@ class AnalysisLogPlugin(Star):
         self.cache_root: Path = self.data_dir / "analysislog_cache"
         self.cache_root.mkdir(parents=True, exist_ok=True)
 
+        # 源码仓库根目录（用于给 LLM 提供对照证据）
+        self.repo_root: Path = self.data_dir / "analysislog_repo"
+        self.repo_root.mkdir(parents=True, exist_ok=True)
+        self.source_repo_path: Optional[Path] = None
+
         # 插件根目录（用于读取 skills/）
         self.plugin_dir: Path = Path(__file__).parent.resolve()
 
@@ -87,6 +92,8 @@ class AnalysisLogPlugin(Star):
 
     async def initialize(self):
         logger.info("[AnalysisLog] 插件已加载，开始监听 QQ 群日志求助")
+        # 异步准备源码仓库（不阻塞 initialize）
+        asyncio.create_task(self._prepare_source_repo())
         self._cleanup_task = asyncio.create_task(self._cleanup_loop())
 
     async def terminate(self):
@@ -462,10 +469,108 @@ class AnalysisLogPlugin(Star):
             logger.warning(f"[AnalysisLog] SKILL.md 不存在：{skill_path}")
 
         suffix = self.config.get("system_prompt_suffix", "")
+
+        # 注入源码路径，供 LLM 按需对照
+        if self.source_repo_path and self.source_repo_path.exists():
+            repo_block = (
+                "\n\n## 上游运行时注入\n"
+                f"MAA_Punish 源码位置：{self.source_repo_path}\n"
+                "（你可以基于该路径检索 assets/、agent/、pipeline、interface.json 等作为对照证据。）\n"
+            )
+        else:
+            repo_block = (
+                "\n\n## 上游运行时注入\n"
+                "MAA_Punish 源码位置：（未提供，跳过源码对照，仅依据日志作答）\n"
+            )
+
         return (
             "你是 MAA_Punish（法奥斯之矛）日志分析助手。请严格遵循以下技能约束。\n\n"
-            f"{skill_text}\n\n{suffix}"
+            f"{skill_text}{repo_block}\n\n{suffix}"
         )
+
+    # ------------------------------------------------------------------ #
+    # 源码仓库管理
+    # ------------------------------------------------------------------ #
+
+    async def _prepare_source_repo(self):
+        """启动时准备 MAA_Punish 源码：使用用户指定路径或在 data 目录下 clone。"""
+        try:
+            custom_path = (self.config.get("source_repo_path") or "").strip()
+            if custom_path:
+                p_path = Path(custom_path).expanduser()
+                if p_path.exists() and p_path.is_dir():
+                    self.source_repo_path = p_path.resolve()
+                    logger.info(f"[AnalysisLog] 使用用户指定源码路径：{self.source_repo_path}")
+                    return
+                else:
+                    logger.warning(f"[AnalysisLog] 用户指定的源码路径不存在：{p_path}")
+
+            repo_url = (self.config.get("source_repo_url") or "").strip()
+            if not repo_url:
+                logger.warning("[AnalysisLog] 未配置 source_repo_url，跳过源码准备")
+                return
+
+            name = repo_url.rstrip("/").rsplit("/", 1)[-1]
+            if name.endswith(".git"):
+                name = name[:-4]
+            target = self.repo_root / (name or "MAA_Punish")
+
+            if target.exists() and (target / ".git").exists():
+                self.source_repo_path = target.resolve()
+                if self.config.get("source_auto_pull", False):
+                    await self._git_pull(target)
+                logger.info(f"[AnalysisLog] 源码已就绪：{self.source_repo_path}")
+                return
+
+            if not self.config.get("source_auto_clone", True):
+                logger.info("[AnalysisLog] source_auto_clone=False，跳过自动克隆")
+                return
+
+            branch = (self.config.get("source_repo_branch") or "").strip()
+            ok = await self._git_clone(repo_url, target, branch)
+            if ok:
+                self.source_repo_path = target.resolve()
+                logger.info(f"[AnalysisLog] 源码克隆完成：{self.source_repo_path}")
+            else:
+                logger.warning("[AnalysisLog] 源码克隆失败，LLM 将无法对照源码")
+        except Exception:
+            logger.exception("[AnalysisLog] 源码准备异常")
+
+    async def _git_clone(self, repo_url: str, target: Path, branch: str) -> bool:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        args = ["git", "clone", "--depth", "1"]
+        if branch:
+            args += ["-b", branch]
+        args += [repo_url, str(target)]
+        return await self._run_subprocess(args, cwd=str(target.parent))
+
+    async def _git_pull(self, target: Path) -> bool:
+        return await self._run_subprocess(["git", "pull", "--ff-only"], cwd=str(target))
+
+    async def _run_subprocess(self, args: List[str], cwd=None) -> bool:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *args,
+                cwd=cwd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            if proc.returncode == 0:
+                logger.debug(f"[AnalysisLog] cmd ok: {' '.join(args)}")
+                return True
+            logger.warning(
+                f"[AnalysisLog] cmd failed ({proc.returncode}): {' '.join(args)}\n"
+                f"stdout={stdout.decode(errors='ignore')[:500]}\n"
+                f"stderr={stderr.decode(errors='ignore')[:500]}"
+            )
+            return False
+        except FileNotFoundError:
+            logger.warning("[AnalysisLog] 未找到 git，请确认服务器已安装 git")
+            return False
+        except Exception:
+            logger.exception("[AnalysisLog] 执行子进程异常")
+            return False
 
     # ------------------------------------------------------------------ #
     # 清理

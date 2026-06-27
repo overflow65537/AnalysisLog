@@ -1,85 +1,73 @@
 {
     "enabled": {
         "type": "bool",
-        "description": "插件总开关",
+        "description": "是否启用本插件",
         "default": true
+    },
+    "receiver_uin": {
+        "type": "string",
+        "description": "接收人 QQ 号（UMO）。触发后日志与聊天记录将以合并转发私聊发送给该 QQ",
+        "default": ""
+    },
+    "history_count": {
+        "type": "int",
+        "description": "转发时附带的该用户最近聊天记录条数",
+        "default": 15
+    },
+    "history_max_pages": {
+        "type": "int",
+        "description": "拉取群历史的最大翻页次数（每页约 20 条，凑够 history_count 即停止）",
+        "default": 10
     },
     "keywords": {
         "type": "list",
-        "description": "求助关键词列表（命中后触发分析流程）",
-        "default": ["报错", "卡住", "不动了", "识别不到", "救命", "help", "bug", "崩溃", "异常"],
-        "hint": "在群消息纯文本中匹配这些关键词；任一命中即触发"
+        "description": "触发关键词列表",
+        "default": ["日志求助", "帮我看看日志", "脚本报错"]
     },
     "keyword_mode": {
         "type": "string",
-        "description": "关键词匹配模式",
-        "options": ["substring", "regex"],
+        "description": "关键词匹配模式：substring（包含匹配）或 regex（正则匹配）",
         "default": "substring",
-        "hint": "substring=子串包含；regex=按正则匹配"
+        "options": ["substring", "regex"]
     },
     "file_name_patterns": {
         "type": "list",
-        "description": "日志文件名正则列表（任一命中即视为日志）",
-        "default": ["(?i)^gui\\.log$", "(?i)^custom.*\\.log$", "(?i)^maa\\.log$", "(?i)^debug.*\\.log$", "(?i).*\\.zip$"],
-        "hint": "Python re 正则，对 File.name 做 search 匹配"
+        "description": "判定为日志文件的文件名正则（任一匹配即记录）",
+        "default": ["\\.log$", "\\.zip$", "gui", "custom", "maa", "debug"]
     },
-    "lookback_minutes": {
-        "type": "int",
-        "description": "回看窗口（分钟）",
-        "default": 10,
-        "hint": "在此窗口内查找该用户上传过的日志"
-    },
-    "cooldown_seconds": {
-        "type": "int",
-        "description": "同一用户触发冷却（秒）",
-        "default": 60,
-        "hint": "避免连续刷屏；管理员手动触发不受限"
+    "received_replies": {
+        "type": "list",
+        "description": "找到日志、开始转发时的随机提示语（随机取一条）",
+        "default": [
+            "已收到你的日志，正在转交给管理员，请稍候~",
+            "日志已找到，正在打包发给管理员啦",
+            "收到，正在把你的日志和最近聊天记录转给管理员"
+        ]
     },
     "nudge_replies": {
         "type": "list",
-        "description": "未找到日志时的随机催促回复列表",
+        "description": "未找到日志时的随机催促语",
         "default": [
-            "请先把日志文件发到群里喵~",
-            "看不到日志我可帮不了你 (´･ω･`)",
-            "先丢一份 gui.log 或日志压缩包上来吧",
-            "没有日志的求助等于让我猜谜，先发文件",
-            "把 debug 目录打包成 zip 丢上来，我才能分析"
+            "没有找到你最近上传的日志文件，请先把日志发到群里再触发哦",
+            "我没看到你的日志文件，请先上传日志再说关键词"
         ]
     },
-    "analyzing_reply": {
-        "type": "string",
-        "description": "找到日志后、分析前的提示语",
-        "default": "已找到你的日志，正在分析中，请稍候..."
+    "done_replies": {
+        "type": "list",
+        "description": "转发成功后的随机提示语",
+        "default": [
+            "已转交给管理员，请耐心等待回复~",
+            "搞定，管理员稍后会看到你的日志"
+        ]
     },
-    "max_log_chars": {
+    "cooldown_seconds": {
         "type": "int",
-        "description": "单个日志文件送入 LLM 的最大字符数（超出会截断尾部）",
-        "default": 30000
+        "description": "同一用户触发的冷却时间（秒），避免重复刷屏",
+        "default": 60
     },
-    "skill_relative_path": {
-        "type": "string",
-        "description": "插件内技能 SKILL.md 的相对路径",
-        "default": "skills/maa-punish-log-analysis/SKILL.md"
-    },
-    "system_prompt_suffix": {
-        "type": "text",
-        "description": "附加到技能 prompt 后面的额外要求",
-        "default": "请基于以上技能与提供的日志内容输出最终结论。回复格式严格为：\n【问题原因】<一句话>\n【解决方案】<分步骤、可执行>\n不要展示分析过程，不要复述日志，不要给出免责声明。"
-    },
-    "admin_only_command": {
-        "type": "bool",
-        "description": "/analysis 指令是否仅限群管理员/群主使用",
-        "default": true
-    },
-    "use_persona_prompt": {
-        "type": "bool",
-        "description": "启用后，分析时采用 AstrBot 当前默认人格的提示词，让回复风格匹配主人格",
-        "default": false
-    },
-    "source_repo_path": {
-        "type": "string",
-        "description": "MAA_Punish 源码本地路径（绝对路径）",
-        "default": "",
-        "hint": "请填写你本地已 clone 好的 MAA_Punish 仓库根目录，留空则跳过源码对照"
+    "lookback_minutes": {
+        "type": "int",
+        "description": "日志有效回溯时间（分钟），仅转发该时间窗口内上传的日志",
+        "default": 10
     }
 }
